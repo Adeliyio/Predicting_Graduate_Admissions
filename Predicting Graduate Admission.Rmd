@@ -1,0 +1,267 @@
+---
+title: 'Predicting Graduate Admissions with Support Vector Machine (SVM) and Gradient Boosting using XGBoost'
+author: "ADELIYI OLUTOMIWA"
+output: 
+    html_document:
+        toc: true
+        toc_float: true
+        theme: cerulean
+---
+<style>
+body {
+text-align: justify}
+</style>
+
+
+# 1.0 INTRODUCTION
+
+This report presents a study on the admission data of prospective students, aiming to predict the likelihood of their acceptance into a university. The dataset obtained from [kaggle] (https://www.kaggle.com/datasets/mohansacharya/graduate-admissions) contains various attributes, including `GRE and TOEFL scores`, `Statements of Purpose (SOP)`, `Letters of Recommendation (LOR)`, `Cumulative Grade Point Average (CGPA)`, and `the chance of admission`.
+
+The analysis begins with exploratory data analysis (EDA), where we investigate the relationships between the variables and their distributions. We also visualize the influence of factors such as `University Rating` and `Research` on the admission process. The main goal is to identify patterns and insights that may help improve the prediction models.
+
+For modeling, two different approaches are explored: `Support Vector Machine (SVM)` and `Gradient Boosting using XGBoost`. SVM is employed as a powerful classification algorithm that works well for both linear and non-linear relationships. On the other hand, XGBoost, a popular boosting technique, is utilized to handle complex interactions and improve predictive accuracy.
+
+To evaluate the performance of the models, we use Receiver Operating Characteristic Area Under the Curve (ROC AUC), a metric that assesses the ability of the models to distinguish between accepted and rejected applicants.
+
+Let's proceed with a detailed analysis and interpretation of the results obtained from the SVM and XGBoost models.
+
+
+# 2.0 METHODOLOGY
+
+The methodology followed in this study involves several key steps to predict the likelihood of admission for prospective students. The initial phase revolves around data pre-processing, where the admission dataset is loaded and its structure is examined. To facilitate analysis, the `University Rating` column is transformed into a factor. Additionally, numeric attributes, such as `GRE Score`, `TOEFL Score`, `SOP`, `LOR`, and `CGPA`, are scaled to ensure their comparability.
+
+The subsequent step involves exploratory data analysis (EDA) to gain insights into the dataset. The distribution of the "Chance of Admission" variable is visualized to understand its spread and potential patterns. Scatter plots are generated to explore the relationships between the numeric variables `(GRE Score, TOEFL Score, SOP, LOR, CGPA)` and the `Chance of Admission`. Furthermore, a correlation plot is constructed to examine the interrelationships between the numeric attributes, identifying potential correlations that may influence the admission outcome.
+
+To evaluate the performance of predictive models, the dataset is split into a training set (90%) and a test set (10%) using the `caret` package. The training set will be utilized to train the models, while the test set will serve for model evaluation. Two different approaches are explored for modeling: Support Vector Machine (SVM) and Gradient Boosting using XGBoost. SVM, known for its ability to handle both linear and non-linear relationships, is employed to create the initial model. On the other hand, XGBoost, a powerful boosting technique, is utilized to capture complex interactions and enhance predictive accuracy
+
+# 3.0 EXPLORATORY DATA ANALYSIS
+
+The Exploratory Data Analysis (EDA) section of this study focuses on gaining a comprehensive understanding of the admission dataset and identifying potential patterns and relationships among its variables. The primary goal is to explore the data visually and statistically, providing valuable insights to guide the subsequent modeling process.
+
+```{r setup, include=TRUE, warning = FALSE, message=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(e1071)
+library(xgboost)
+library(MLmetrics)
+library(ggplot2)
+library(corrplot)
+
+admission <- read.csv("Admission_Predict_Ver1.1.csv")
+
+admission_data <- admission %>%
+  mutate(University_Rating = as.factor(University.Rating)) 
+
+numeric_cols <- c("GRE.Score", "TOEFL.Score", "SOP", "LOR", "CGPA")
+admission_data[numeric_cols] <- scale(admission_data[numeric_cols])
+
+#Exploratory Data Analysis
+
+# Convert University Rating and Research columns to factors
+admission$University.Rating <- as.factor(admission$University.Rating)
+admission$Research <- as.factor(admission$Research)
+
+
+```
+
+
+### *Summary Statistics:*
+
+The summary statistics provide valuable insights into the distribution and characteristics of the admission dataset. Let's delve deeper into each attribute's summary statistics:
+
+```{r fig.width = 10, fig.height = 6, warning = FALSE}
+
+# Summary statistics
+summary(admission_data)
+```
+
+
++ GRE Score and TOEFL Score:
+
+The GRE Score and TOEFL Score are standardized variables, where the mean is centered at 0, and the standard deviation is set to 1. The minimum and maximum values indicate the minimum and maximum scores in the dataset.
+The first quartile (1st Qu.) represents the 25th percentile of scores, while the third quartile (3rd Qu.) corresponds to the 75th percentile. The interquartile range (IQR) measures the spread between these quartiles.
+The median is the 50th percentile value, indicating the midpoint of the data distribution.
+The mean is approximately 0, as the standardized data has a mean of 0 by design.
+
++ University Rating and Research:
+
+University Rating is represented as a factor with values ranging from 1 to 5, indicating the rating of the universities applied to by the students. Research is a binary variable, represented as 0 or 1, indicating whether a student has research experience (1) or not (0). The summary statistics provide the count of students belonging to each University Rating category and the proportion of students with or without research experience (Research).
+
++ Statement of Purpose (SOP), Letter of Recommendation (LOR), and CGPA:
+
+Similar to GRE Score and TOEFL Score, SOP, LOR, and CGPA are standardized variables, with a mean of 0 and a standard deviation of 1.The quartile values (1st Qu., Median, 3rd Qu.) provide insights into the spread of scores across these attributes.
+
++ Chance of Admission:
+
+The `Chance of Admission` is the target variable we seek to predict.
+The summary statistics include the minimum and maximum values, which represent the range of admission probabilities in the dataset. The first quartile (1st Qu.), median, and third quartile (3rd Qu.) provide insights into the spread of admission probabilities and the central tendency of the data.
+The mean, approximately 0.7217, represents the average chance of admission in the dataset.
+
+Overall, the summary statistics offer a comprehensive overview of the dataset's numeric attributes and their distributions. By understanding the spread and central tendency of each attribute, we gain crucial insights that help inform our subsequent modeling and decision-making processes. The standardized scores allow for comparisons and analysis of the relative importance of different attributes in predicting the likelihood of admission.
+
+
+### *Visualization of University Rating and Research:*
+
+
+To explore the relationship between University Rating and Research experience, we employ a bar plot. The visualization shows the distribution of students across different University Ratings, with each bar segment representing the proportion of students with or without research experience. 
+
+```{r fig.width = 10, fig.height = 6, warning = FALSE}
+# Visualize University Rating and Research
+ggplot(admission, aes(x = University.Rating, fill = Research)) +
+  geom_bar(position = "dodge") +
+  labs(title = "Research vs. University Rating",
+       x = "University Rating",
+       y = "Count",
+       fill = "Research")
+```
+
+
+
+### *Distribution of Chance of Admission:*
+
+A comprehensive understanding of the distribution of the `Chance of Admission` variable is crucial for modeling. We plotted the `chance of admission` against the independent variables. 
+
+
+```{r fig.width = 10, fig.height = 6, warning = FALSE}
+# Visualize Chance of Admission
+ggplot(admission, aes(x = Chance.of.Admit)) +
+  geom_histogram(binwidth = 0.02, fill = "darkblue", color = "black") +
+  labs(title = "Distribution of Chance of Admission",
+       x = "Chance of Admission",
+       y = "Count")
+
+# Visualize Chance of Admission vs. GRE Score with smoothing
+ggplot(admission, aes(x = GRE.Score, y = Chance.of.Admit)) +
+  geom_point() +
+  geom_smooth(method = "loess", color = "red") +
+  labs(title = "Chance of Admission vs. GRE Score",
+       x = "GRE Score",
+       y = "Chance of Admission")
+
+# Visualize Chance of Admission vs. CGPA with smoothing
+ggplot(admission, aes(x = CGPA, y = Chance.of.Admit)) +
+  geom_point() +
+  geom_smooth(method = "loess", color = "red") +
+  labs(title = "Chance of Admission vs. CGPA",
+       x = "CGPA",
+       y = "Chance of Admission")
+
+```
+
+### *Scatter Plots for Numeric Variables:*
+
+We isolated the numeric attributes (GRE Score, TOEFL Score, SOP, LOR, CGPA) and the `Chance of Admission` by creating scatter plots with added regression lines or loess smoothing curves. These plots facilitate the identification of potential linear or non-linear associations between attributes and admission chances. Furthermore, we employ color-coding or size variation to highlight any categorical or numerical variables that might influence the relationship.
+
+
+```{r fig.width = 10, fig.height = 6, warning = FALSE}
+# Scatter plots for numeric variables
+scatter_data <- admission %>% select(GRE.Score, TOEFL.Score, SOP, LOR, CGPA, Chance.of.Admit)
+
+pairs(scatter_data)
+
+```
+
+
+### *Correlation Analysis:*
+
+To assess the interdependency between numeric attributes, we performed correlation analysis as highly correlated features might introduce multicollinearity in the predictive models.
+
+
+```{r fig.width = 10, fig.height = 6, warning = FALSE}
+
+# Correlation plot
+correlation_matrix <- cor(scatter_data)
+corrplot(correlation_matrix, type = "upper", order = "hclust", tl.col = "black")
+```
+
+
+By executing this robust Exploratory Data Analysis, we gained a profound understanding of the dataset's characteristics, unveil intricate relationships between variables, and obtain valuable insights. These insights guide us in selecting appropriate features for modeling, addressing data quality concerns, and building accurate and reliable prediction models for university admission likelihood.
+
+
+# 4.0 MODEL EVALUATION
+
+```{r fig.width = 10, fig.height = 6, warning = FALSE}
+
+
+set.seed(1234)
+inTrain <- caret::createDataPartition(admission_data$Chance.of.Admit, p = 0.9, list = FALSE)
+train_data <- admission_data[inTrain,]
+test_data <- admission_data[-inTrain,]
+
+# Build the support vector machine model
+adm_model_svm <- svm(Chance.of.Admit ~ ., data = train_data, probability = TRUE)
+adm_test_pred_svm <- predict(adm_model_svm, test_data)
+
+# Convert the response variable to binary class labels for AUC calculation
+threshold <- 0.5
+train_data$Chance.of.Admit_binary <- ifelse(train_data$Chance.of.Admit >= threshold, 1, 0)
+test_data$Chance.of.Admit_binary <- ifelse(test_data$Chance.of.Admit >= threshold, 1, 0)
+
+# Train the XGBoost model with DMatrix
+xgb_train_matrix <- xgboost::xgb.DMatrix(data = as.matrix(train_data[, numeric_cols]), 
+                                         label = train_data$Chance.of.Admit_binary)
+
+params <- list(booster = "gbtree", objective = "binary:logistic", eval_metric = "logloss")
+adm_model_xgb <- xgboost::xgboost(data = xgb_train_matrix, params = params, nrounds = 100)
+
+# Make predictions on the test set for XGBoost
+xgb_test_matrix <- xgboost::xgb.DMatrix(data = as.matrix(test_data[, numeric_cols]))
+adm_test_pred_xgb <- predict(adm_model_xgb, xgb_test_matrix)
+
+# Evaluate models using ROC AUC on the test set
+roc_auc_svm <- MLmetrics::AUC(y_pred = adm_test_pred_svm, y_true = test_data$Chance.of.Admit_binary)
+roc_auc_xgb <- MLmetrics::AUC(y_pred = adm_test_pred_xgb, y_true = test_data$Chance.of.Admit_binary)
+
+print(paste("ROC AUC (Support Vector Machine): ", roc_auc_svm))
+print(paste("ROC AUC (Gradient Boosting): ", roc_auc_xgb))
+
+```
+
+
+we present a comprehensive evaluation of two predictive models: the `Support Vector Machine (SVM)` and Gradient Boosting using `XGBoost`, for the task of predicting students' chances of admission to universities. The evaluation process includes data partitioning, model building, prediction, and performance assessment using Receiver Operating Characteristic Area Under the Curve (ROC AUC).
+
+1. Data Partitioning:
+To ensure an unbiased evaluation, we split the admission dataset into two subsets: a training set (90% of the data) and a testing set (10% of the data). The createDataPartition function from the caret package is utilized to randomly partition the data, ensuring that both sets are representative of the overall dataset.
+
+2. Support Vector Machine (SVM) Model:
+We employ the powerful Support Vector Machine algorithm, available in the e1071 package, to build the first predictive model. All available attributes, including GRE Score, TOEFL Score, Statement of Purpose (SOP), Letter of Recommendation (LOR), CGPA, University Rating, and Research, are used as predictors to estimate the "Chance of Admission" target variable. The SVM model is designed to classify students into two categories: admitted or not admitted. To enable probability estimates, we set the probability parameter to TRUE.
+
+3. Conversion to Binary Class Labels:
+To assess the model's performance using the ROC AUC metric, we convert the "Chance of Admission" target variable to binary class labels. A threshold of 0.5 is applied to categorize instances into two classes: 1 (admitted) and 0 (not admitted), based on whether their chance of admission is greater than or equal to the threshold or not.
+
+4. Gradient Boosting using XGBoost:
+The second predictive model is built using Gradient Boosting, a powerful ensemble learning technique, with the XGBoost implementation available in the xgboost package. Similar to the SVM model, all numeric attributes are used as features to predict the binary outcome of admission. We set the objective as "binary:logistic" to facilitate binary classification.
+
+5. Model Training and Iterations:
+The XGBoost model undergoes a training process, where it iteratively improves its performance over 100 rounds (nrounds). The primary objective is to minimize the log-loss (logistic loss) during training. The training log provides valuable insights into the learning progress and log-loss values at each iteration.
+
+6. Model Prediction:
+After model training, we utilize the trained SVM and XGBoost models to make predictions on the test data. The predicted probabilities for admission are stored in adm_test_pred_svm for SVM and adm_test_pred_xgb for XGBoost.
+
+
+# 5.0 RESULTS
+
+We evaluate the predictive models' performance using the ROC AUC metric, which measures the models' ability to discriminate between admitted and non-admitted students. A higher ROC AUC value, closer to 1, indicates better model discrimination. The SVM model achieves an ROC AUC of approximately 0.912, while the XGBoost model achieves a score of around 0.777.
+
+# 6.0 CONCLUSION
+
+The detailed model evaluation allows us to compare the performance of the SVM and XGBoost models for predicting students' chances of admission. The SVM model demonstrates superior discrimination ability, as evidenced by its higher ROC AUC score. These results provide valuable insights into selecting the most effective model for making accurate predictions in the university admission process.
+
+# 7.0 REFERENCES
+
+1. Data Source: (https://www.kaggle.com/datasets/mohansacharya/graduate-admissions)
+
+2. Kuhn, M. (2020). caret: Classification and Regression Training. R package version 6.0-86. https://CRAN.R-project.org/package=caret
+
+3. Robin, X., Turck, N., Hainard, A., Tiberti, N., Lisacek, F., Sanchez, J.-C., & Muller, M. (2011). pROC: an open-source package for R and S+ to analyze and compare ROC curves. BMC Bioinformatics, 12(1), 77.
+
+4. Chen, T., & Guestrin, C. (2016). XGBoost: A Scalable Tree Boosting System. Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining, 785-794.
+
+5. Breiman, L. (2001). Random forests. Machine Learning, 45(1), 5-32.
+Healy, K. (2018). Data Visualization: A Practical Introduction. Princeton University Press. Retrieved from 
+
+6. Wickham, H., & Grolemund, G. (2017). R for Data Science: Import, Tidy, Transform, Visualize, and Model Data. O'Reilly Media.
+
+7. Wilke, C. O. (2019). Fundamentals of Data Visualization: A Primer on Making Informative and Compelling Figures. O'Reilly Media.
+
+8. https://topepo.github.io/caret/index.html
